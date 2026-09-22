@@ -1,205 +1,912 @@
-import React, { useState, useMemo, useCallback, Suspense, lazy } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  Suspense,
+  lazy,
+  useRef,
+  useEffect,
+} from "react";
 
-// Dynamic Import / Code Splitting for heavy components
-const AnalyticsReportWidget = lazy(() => import('./components/AnalyticsReportWidget'));
+// ============================================================
+// CODE SPLITTING
+// ============================================================
+const PremiumReportWidget = lazy(
+  () => import("./components/AnalyticsReportWidget")
+);
 
+// ============================================================
+// INITIAL EVENTS
+// ============================================================
 const INITIAL_EVENTS = [
-  { id: 'evt-1', title: '🚀 Product Launch Post', date: '2026-08-10', category: 'Marketing', gradient: 'from-blue-600 via-indigo-600 to-cyan-500 shadow-blue-500/30' },
-  { id: 'evt-2', title: '📰 Weekly Newsletter', date: '2026-08-11', category: 'Editorial', gradient: 'from-emerald-500 via-teal-600 to-green-400 shadow-emerald-500/30' },
-  { id: 'evt-3', title: '🔥 Community AMA', date: '2026-08-12', category: 'Social', gradient: 'from-amber-500 via-orange-600 to-rose-500 shadow-amber-500/30' },
-  { id: 'evt-4', title: '💻 Tech Blog Release', date: '2026-08-14', category: 'Dev', gradient: 'from-purple-600 via-fuchsia-600 to-pink-500 shadow-purple-500/30' }
+  {
+    id: "evt-1",
+    title: "🚀 Product Launch Post",
+    date: "2026-08-28",
+    category: "Marketing",
+    gradient:
+      "from-blue-600 via-indigo-600 to-cyan-500 shadow-blue-500/30",
+  },
+  {
+    id: "evt-2",
+    title: "📰 Weekly Newsletter",
+    date: "2026-08-29",
+    category: "Editorial",
+    gradient:
+      "from-emerald-500 via-teal-600 to-green-400 shadow-emerald-500/30",
+  },
+  {
+    id: "evt-3",
+    title: "🔥 Community AMA",
+    date: "2026-08-30",
+    category: "Social",
+    gradient:
+      "from-amber-500 via-orange-600 to-rose-500 shadow-amber-500/30",
+  },
+  {
+    id: "evt-4",
+    title: "💻 Tech Blog Release",
+    date: "2026-09-02",
+    category: "Dev",
+    gradient:
+      "from-purple-600 via-fuchsia-600 to-pink-500 shadow-purple-500/30",
+  },
 ];
 
+// ============================================================
+// DAYS
+// ============================================================
 const DAYS_OF_WEEK = [
-  { name: 'Mon', color: 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-blue-300/50' },
-  { name: 'Tue', color: 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-emerald-300/50' },
-  { name: 'Wed', color: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-300/50' },
-  { name: 'Thu', color: 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-rose-300/50' },
-  { name: 'Fri', color: 'bg-gradient-to-r from-sky-500 to-indigo-500 text-white shadow-sky-300/50' },
-  { name: 'Sat', color: 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-purple-300/50' },
-  { name: 'Sun', color: 'bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white shadow-fuchsia-300/50' }
+  {
+    name: "Mon",
+    color: "bg-gradient-to-r from-blue-500 to-cyan-500 text-white",
+  },
+  {
+    name: "Tue",
+    color: "bg-gradient-to-r from-emerald-500 to-teal-500 text-white",
+  },
+  {
+    name: "Wed",
+    color: "bg-gradient-to-r from-amber-500 to-orange-500 text-white",
+  },
+  {
+    name: "Thu",
+    color: "bg-gradient-to-r from-rose-500 to-pink-500 text-white",
+  },
+  {
+    name: "Fri",
+    color: "bg-gradient-to-r from-sky-500 to-indigo-500 text-white",
+  },
+  {
+    name: "Sat",
+    color: "bg-gradient-to-r from-purple-500 to-violet-600 text-white",
+  },
+  {
+    name: "Sun",
+    color: "bg-gradient-to-r from-fuchsia-500 to-pink-600 text-white",
+  },
 ];
 
-// Memoized Event Card component
-const EventCard = React.memo(({ event, onDragStart }) => {
+// ============================================================
+// CALENDAR DAYS
+// ============================================================
+const CALENDAR_DAYS = [];
+
+for (let i = 28; i <= 31; i++) {
+  CALENDAR_DAYS.push({
+    dayNumber: i,
+    monthLabel: `${i} AUG`,
+    dateString: `2026-08-${i}`,
+  });
+}
+
+for (let i = 1; i <= 10; i++) {
+  const day = i < 10 ? `0${i}` : `${i}`;
+
+  CALENDAR_DAYS.push({
+    dayNumber: i,
+    monthLabel: `${i} SEP`,
+    dateString: `2026-09-${day}`,
+  });
+}
+
+// ============================================================
+// OPTIMIZED EVENT CARD
+// React.memo prevents unnecessary child re-renders
+// ============================================================
+const OptimizedEventCard = React.memo(function OptimizedEventCard({
+  event,
+  onDragStart,
+}) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, event.id)}
-      className={`bg-gradient-to-r ${event.gradient} text-white p-3 my-2 rounded-xl shadow-lg hover:shadow-2xl hover:scale-[1.04] active:scale-95 transition-all duration-300 cursor-grab active:cursor-grabbing font-bold text-xs flex flex-col justify-between gap-2 border border-white/20`}
-      data-testid={`event-card-${event.id}`}
+      className={`bg-gradient-to-r ${event.gradient}
+      text-white p-3 my-2 rounded-xl shadow-lg
+      hover:scale-[1.03] transition-all duration-300
+      cursor-grab font-bold text-xs
+      border border-white/20`}
+      data-testid={`optimized-event-${event.id}`}
     >
-      <span className="truncate drop-shadow-md text-xs sm:text-sm tracking-wide">{event.title}</span>
-      <span className="self-start bg-black/20 backdrop-blur-md text-white text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider font-extrabold border border-white/30">
+      <div className="flex justify-between gap-2">
+        <span className="truncate">{event.title}</span>
+
+        <span className="text-[9px] bg-black/20 px-2 py-1 rounded-full">
+          R{renderCount.current}
+        </span>
+      </div>
+
+      <span className="inline-block mt-2 bg-black/20 px-2 py-1 rounded-full text-[9px] uppercase">
         {event.category}
       </span>
     </div>
   );
 });
 
-// Memoized Calendar Day slot
-const CalendarDay = React.memo(({ dayNumber, dateString, events, onDragOver, onDrop, onDragStart }) => {
-  const isSelectedDay = dayNumber === 11;
+// ============================================================
+// NON-OPTIMIZED EVENT CARD
+// Deliberately does NOT use React.memo
+// ============================================================
+function NonOptimizedEventCard({ event, onDragStart }) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+
+  return (
+    <div
+      draggable
+      onDragStart={(e) => onDragStart(e, event.id)}
+      className={`bg-gradient-to-r ${event.gradient}
+      text-white p-3 my-2 rounded-xl shadow-lg
+      hover:scale-[1.03] transition-all duration-300
+      cursor-grab font-bold text-xs
+      border border-white/20`}
+      data-testid={`nonoptimized-event-${event.id}`}
+    >
+      <div className="flex justify-between gap-2">
+        <span className="truncate">{event.title}</span>
+
+        <span className="text-[9px] bg-black/20 px-2 py-1 rounded-full">
+          R{renderCount.current}
+        </span>
+      </div>
+
+      <span className="inline-block mt-2 bg-black/20 px-2 py-1 rounded-full text-[9px] uppercase">
+        {event.category}
+      </span>
+    </div>
+  );
+}
+
+// ============================================================
+// OPTIMIZED DAY
+// React.memo
+// ============================================================
+const OptimizedCalendarDay = React.memo(function OptimizedCalendarDay({
+  dayNumber,
+  monthLabel,
+  dateString,
+  events,
+  onDragOver,
+  onDrop,
+  onDragStart,
+}) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+
+  const isSelectedDay = dayNumber === 28;
 
   return (
     <div
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, dateString)}
-      className={`min-h-[165px] rounded-2xl p-3.5 border transition-all duration-300 flex flex-col justify-between backdrop-blur-xl ${
+      className={`min-h-[165px] rounded-2xl p-3 border
+      flex flex-col bg-white/85 backdrop-blur-xl
+      ${
         isSelectedDay
-          ? 'bg-gradient-to-b from-blue-100/90 via-indigo-100/90 to-purple-100/90 border-indigo-500 ring-2 ring-indigo-400/80 shadow-xl shadow-indigo-300/40'
-          : 'bg-white/85 hover:bg-white border-white/90 hover:border-purple-300 hover:shadow-xl hover:-translate-y-0.5'
+          ? "border-indigo-500 ring-2 ring-indigo-400 bg-indigo-50"
+          : "border-white hover:border-purple-300"
       }`}
-      data-testid={`day-cell-${dateString}`}
+      data-testid={`optimized-day-${dateString}`}
     >
       <div className="flex justify-between items-center mb-2">
         <span
-          className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs sm:text-sm shadow-md transition-all ${
+          className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm
+          ${
             isSelectedDay
-              ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-indigo-400/50 scale-110'
-              : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+              : "bg-slate-100 text-slate-700"
           }`}
         >
           {dayNumber}
         </span>
-        <span className="text-[11px] font-black tracking-wide text-slate-500 uppercase">{dateString.slice(8)} Aug</span>
+
+        <div className="text-right">
+          <div className="text-[9px] text-indigo-600 font-bold">
+            Renders
+          </div>
+
+          <div className="text-xs font-black text-indigo-700">
+            {renderCount.current}
+          </div>
+
+          <div className="text-[10px] font-bold text-slate-500">
+            {monthLabel}
+          </div>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto pr-0.5">
-        {events.map((evt) => (
-          <EventCard key={evt.id} event={evt} onDragStart={onDragStart} />
+
+      <div className="flex-1 overflow-y-auto">
+        {events.map((event) => (
+          <OptimizedEventCard
+            key={event.id}
+            event={event}
+            onDragStart={onDragStart}
+          />
         ))}
       </div>
     </div>
   );
 });
 
+// ============================================================
+// NON-OPTIMIZED DAY
+// No React.memo
+// ============================================================
+function NonOptimizedCalendarDay({
+  dayNumber,
+  monthLabel,
+  dateString,
+  events,
+  onDragOver,
+  onDrop,
+  onDragStart,
+}) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDrop={(e) => onDrop(e, dateString)}
+      className="min-h-[165px] rounded-2xl p-3 border border-red-200 bg-red-50/80"
+      data-testid={`nonoptimized-day-${dateString}`}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <span className="w-8 h-8 rounded-full flex items-center justify-center font-black text-sm bg-red-200 text-red-800">
+          {dayNumber}
+        </span>
+
+        <div className="text-right">
+          <div className="text-[9px] text-red-600 font-bold">
+            Renders
+          </div>
+
+          <div className="text-xs font-black text-red-700">
+            {renderCount.current}
+          </div>
+
+          <div className="text-[10px] font-bold text-red-500">
+            {monthLabel}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        {events.map((event) => (
+          <NonOptimizedEventCard
+            key={event.id}
+            event={event}
+            onDragStart={onDragStart}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
 export default function App() {
   const [events, setEvents] = useState(INITIAL_EVENTS);
-  const [filterCategory, setFilterCategory] = useState('All');
+
+  const [filterCategory, setFilterCategory] = useState("All");
+
   const [showAnalytics, setShowAnalytics] = useState(false);
 
-  // Memoized event filtering
+  const [mode, setMode] = useState("optimized");
+
+  const [totalRenders, setTotalRenders] = useState(0);
+
+  const [recentLogs, setRecentLogs] = useState([]);
+
+  const [counter, setCounter] = useState(0);
+
+  // ============================================================
+  // OPTIMIZED: useMemo
+  // ============================================================
   const filteredEvents = useMemo(() => {
-    if (filterCategory === 'All') return events;
-    return events.filter((e) => e.category === filterCategory);
+    console.log("useMemo: Filtering events");
+
+    if (filterCategory === "All") {
+      return events;
+    }
+
+    return events.filter(
+      (event) => event.category === filterCategory
+    );
   }, [events, filterCategory]);
 
-  // Drag-and-drop state callbacks
+  // ============================================================
+  // OPTIMIZED: GROUP EVENTS ONLY ON DEPENDENCY CHANGE
+  // ============================================================
+  const eventsByDate = useMemo(() => {
+    const grouped = {};
+
+    CALENDAR_DAYS.forEach((day) => {
+      grouped[day.dateString] = filteredEvents.filter(
+        (event) => event.date === day.dateString
+      );
+    });
+
+    return grouped;
+  }, [filteredEvents]);
+
+  // ============================================================
+  // OPTIMIZED: useCallback
+  // ============================================================
   const handleDragStart = useCallback((e, eventId) => {
-    e.dataTransfer.setData('text/plain', eventId);
+    e.dataTransfer.setData("text/plain", eventId);
   }, []);
 
+  // ============================================================
+  // OPTIMIZED: useCallback
+  // ============================================================
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
   }, []);
 
-  const handleDrop = useCallback((e, targetDate) => {
-    e.preventDefault();
-    const eventId = e.dataTransfer.getData('text/plain');
-    setEvents((prevEvents) =>
-      prevEvents.map((evt) => (evt.id === eventId ? { ...evt, date: targetDate } : evt))
-    );
-  }, []);
+  // ============================================================
+  // DRAG & DROP
+  // ============================================================
+  const handleDrop = useCallback(
+    (e, targetDate) => {
+      e.preventDefault();
 
-  const calendarDays = useMemo(() => {
-    const days = [];
-    for (let i = 10; i <= 23; i++) {
-      const dayStr = i < 10 ? `0${i}` : `${i}`;
-      days.push({ dayNumber: i, dateString: `2026-08-${dayStr}` });
-    }
-    return days;
-  }, []);
+      const eventId = e.dataTransfer.getData("text/plain");
+
+      const draggedEvent = events.find(
+        (event) => event.id === eventId
+      );
+
+      if (!draggedEvent) return;
+
+      if (draggedEvent.date === targetDate) return;
+
+      const sourceDate = draggedEvent.date;
+
+      setEvents((previousEvents) =>
+        previousEvents.map((event) =>
+          event.id === eventId
+            ? {
+                ...event,
+                date: targetDate,
+              }
+            : event
+        )
+      );
+
+      setTotalRenders((previous) => previous + 2);
+
+      const sourceLabel = `${sourceDate.slice(8)} ${
+        sourceDate.includes("-08-") ? "AUG" : "SEP"
+      }`;
+
+      const targetLabel = `${targetDate.slice(8)} ${
+        targetDate.includes("-08-") ? "AUG" : "SEP"
+      }`;
+
+      setRecentLogs([
+        `⚡ ${targetLabel} Target`,
+        `⚡ ${sourceLabel} Source`,
+      ]);
+    },
+    [events]
+  );
+
+  // ============================================================
+  // SIMULATE UNRELATED PARENT RENDER
+  // ============================================================
+  const triggerRender = () => {
+    setCounter((previous) => previous + 1);
+
+    setTotalRenders((previous) => previous + 1);
+
+    setRecentLogs([
+      "🔄 Parent re-render",
+      mode === "optimized"
+        ? "🟢 Memoized children protected"
+        : "🔴 Children re-rendered",
+    ]);
+  };
+
+  // ============================================================
+  // STATISTICS
+  // ============================================================
+  const totalPosts = events.length;
+
+  const optimized = mode === "optimized";
 
   return (
-    <div className="w-full min-h-screen relative overflow-x-hidden bg-gradient-to-br from-sky-100 via-indigo-100 via-purple-100 to-amber-100 px-4 sm:px-8 py-6 font-sans text-slate-900 flex flex-col justify-between selection:bg-purple-500 selection:text-white">
-      {/* Bright Ambient Glowing Orbs */}
-      <div className="absolute top-[-5%] left-[-5%] w-[600px] h-[600px] bg-gradient-to-r from-blue-400/35 to-cyan-300/35 rounded-full blur-[120px] pointer-events-none animate-pulse"></div>
-      <div className="absolute top-[20%] right-[-5%] w-[600px] h-[600px] bg-gradient-to-r from-purple-400/35 to-pink-300/35 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-[-5%] left-[20%] w-[650px] h-[650px] bg-gradient-to-r from-amber-300/35 to-rose-400/35 rounded-full blur-[130px] pointer-events-none"></div>
+    <div
+      className="w-full min-h-screen overflow-x-hidden
+      bg-gradient-to-br from-sky-100 via-indigo-100
+      via-purple-100 to-amber-100 px-4 sm:px-8 py-6
+      font-sans text-slate-900"
+    >
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
 
-      {/* Full-Width Bright Glass Header */}
-      <header className="relative w-full mx-auto mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-2xl p-6 rounded-3xl border border-white/90 shadow-xl shadow-indigo-100/50">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block w-3 h-3 rounded-full bg-gradient-to-r from-pink-500 to-violet-500 animate-ping"></span>
-            <span className="text-xs font-black uppercase tracking-widest text-indigo-600">Dynamic Content Suite</span>
+      <header
+        className="w-full max-w-[1400px] mx-auto mb-6
+        bg-white/80 backdrop-blur-2xl p-6 rounded-3xl
+        border border-white shadow-xl"
+      >
+        <div className="flex flex-col lg:flex-row
+        justify-between items-center gap-5">
+
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-purple-500" />
+
+              <span className="text-xs font-black uppercase
+              tracking-widest text-indigo-600">
+                Experiment 4 Module
+              </span>
+            </div>
+
+            <h1
+              className="text-3xl sm:text-4xl font-black
+              bg-gradient-to-r from-blue-600
+              via-purple-600 to-pink-600
+              bg-clip-text text-transparent"
+            >
+              Interactive Content Calendar
+            </h1>
+
+            <p className="text-slate-600 text-sm font-bold mt-2">
+              Optimized vs Non-Optimized React Rendering
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mt-0.5">
-            Interactive Content Calendar
-          </h1>
-          <p className="text-slate-600 text-xs sm:text-sm font-bold mt-1">
-            Drag and drop posts to reschedule • Memoized component optimization
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <select
-            value={filterCategory}
-            onChange={(e) => setFilterCategory(e.target.value)}
-            className="px-4 py-2.5 bg-white border-2 border-indigo-100 rounded-xl text-xs font-extrabold text-slate-800 shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer hover:border-indigo-300 transition-all"
-          >
-            <option value="All">🌈 All Categories</option>
-            <option value="Marketing">🚀 Marketing</option>
-            <option value="Editorial">📰 Editorial</option>
-            <option value="Social">🔥 Social</option>
-            <option value="Dev">💻 Dev</option>
-          </select>
+          {/* CONTROLS */}
 
-          <button
-            onClick={() => setShowAnalytics((prev) => !prev)}
-            className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white text-xs font-black rounded-xl shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 hover:scale-105 active:scale-95 transition-all border border-white/30"
-          >
-            {showAnalytics ? '⚡ Hide Analytics' : '✨ Load Analytics'}
-          </button>
+          <div className="flex flex-wrap justify-center gap-3">
+
+            {/* MODE */}
+
+            <button
+              onClick={() =>
+                setMode((previous) =>
+                  previous === "optimized"
+                    ? "nonoptimized"
+                    : "optimized"
+                )
+              }
+              className={`px-5 py-3 rounded-xl
+              text-xs font-black text-white shadow-lg
+              ${
+                optimized
+                  ? "bg-gradient-to-r from-emerald-500 to-teal-600"
+                  : "bg-gradient-to-r from-red-500 to-orange-600"
+              }`}
+            >
+              {optimized
+                ? "⚡ Optimized Mode"
+                : "🐌 Non-Optimized Mode"}
+            </button>
+
+            {/* FILTER */}
+
+            <select
+              value={filterCategory}
+              onChange={(e) =>
+                setFilterCategory(e.target.value)
+              }
+              className="px-4 py-3 bg-white
+              border-2 border-indigo-200 rounded-xl
+              text-xs font-bold"
+            >
+              <option value="All">🌈 All Categories</option>
+              <option value="Marketing">🚀 Marketing</option>
+              <option value="Editorial">📰 Editorial</option>
+              <option value="Social">🔥 Social</option>
+              <option value="Dev">💻 Dev</option>
+            </select>
+
+            {/* ANALYTICS */}
+
+            <button
+              onClick={() =>
+                setShowAnalytics((previous) => !previous)
+              }
+              className="px-5 py-3 rounded-xl
+              bg-gradient-to-r from-indigo-600
+              to-pink-600 text-white
+              text-xs font-black shadow-lg"
+            >
+              {showAnalytics
+                ? "Hide Premium Report"
+                : "Load Premium Report"}
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Lazy Loaded Widget */}
+      {/* ======================================================
+          OPTIMIZATION COMPARISON
+      ====================================================== */}
+
+      <section
+        className="max-w-[1400px] mx-auto mb-6
+        grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+
+        {/* OPTIMIZED */}
+
+        <div
+          className={`p-5 rounded-2xl border-2
+          ${
+            optimized
+              ? "border-emerald-400 bg-emerald-50"
+              : "border-slate-200 bg-white/70"
+          }`}
+        >
+          <h3 className="font-black text-emerald-700">
+            ⚡ OPTIMIZED
+          </h3>
+
+          <p className="text-xs mt-2 font-semibold">
+            React.memo
+          </p>
+
+          <p className="text-xs font-semibold">
+            useMemo
+          </p>
+
+          <p className="text-xs font-semibold">
+            useCallback
+          </p>
+
+          <p className="text-xs font-semibold">
+            Stable references
+          </p>
+
+          <div className="mt-3 text-2xl font-black text-emerald-600">
+            {optimized ? "ACTIVE" : "OFF"}
+          </div>
+        </div>
+
+        {/* NON OPTIMIZED */}
+
+        <div
+          className={`p-5 rounded-2xl border-2
+          ${
+            !optimized
+              ? "border-red-400 bg-red-50"
+              : "border-slate-200 bg-white/70"
+          }`}
+        >
+          <h3 className="font-black text-red-700">
+            🐌 NON-OPTIMIZED
+          </h3>
+
+          <p className="text-xs mt-2 font-semibold">
+            No React.memo
+          </p>
+
+          <p className="text-xs font-semibold">
+            Repeated rendering
+          </p>
+
+          <p className="text-xs font-semibold">
+            More component work
+          </p>
+
+          <p className="text-xs font-semibold">
+            Useful for comparison
+          </p>
+
+          <div className="mt-3 text-2xl font-black text-red-600">
+            {!optimized ? "ACTIVE" : "OFF"}
+          </div>
+        </div>
+
+        {/* TEST */}
+
+        <div
+          className="p-5 rounded-2xl
+          bg-gradient-to-r from-indigo-700
+          to-purple-700 text-white"
+        >
+          <h3 className="font-black">
+            🧪 RENDER TEST
+          </h3>
+
+          <p className="text-xs mt-2">
+            Parent render count
+          </p>
+
+          <div className="text-3xl font-black mt-2">
+            {counter}
+          </div>
+
+          <button
+            onClick={triggerRender}
+            className="mt-3 px-4 py-2
+            rounded-lg bg-white text-indigo-700
+            text-xs font-black"
+          >
+            Trigger Re-render
+          </button>
+        </div>
+      </section>
+
+      {/* ======================================================
+          REACT RENDER MONITOR
+      ====================================================== */}
+
+      <section
+        className="max-w-[1400px] mx-auto mb-6
+        bg-slate-900 text-white p-5 rounded-3xl
+        shadow-2xl"
+      >
+        <div className="flex flex-col lg:flex-row
+        justify-between items-center gap-5">
+
+          <div>
+            <h2
+              className="text-sm font-black
+              tracking-widest text-indigo-400"
+            >
+              📊 REACT RENDER MONITOR
+            </h2>
+
+            <p className="text-xs text-slate-400 mt-1">
+              Compare component re-render behaviour
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+
+            <div className="bg-slate-800 p-4 rounded-xl text-center">
+              <p className="text-[10px] text-slate-400">
+                TOTAL RENDER EVENTS
+              </p>
+
+              <p
+                className="text-2xl font-black text-amber-400"
+                data-testid="total-renders-counter"
+              >
+                {totalRenders}
+              </p>
+            </div>
+
+            <div className="bg-slate-800 p-4 rounded-xl text-center">
+              <p className="text-[10px] text-slate-400">
+                CURRENT MODE
+              </p>
+
+              <p
+                className={`text-sm font-black mt-2
+                ${
+                  optimized
+                    ? "text-emerald-400"
+                    : "text-red-400"
+                }`}
+              >
+                {optimized ? "OPTIMIZED" : "NON-OPTIMIZED"}
+              </p>
+            </div>
+
+            <div className="bg-slate-800 p-4 rounded-xl text-center">
+              <p className="text-[10px] text-slate-400">
+                RECENT ACTIVITY
+              </p>
+
+              <div className="text-[10px] mt-2 text-indigo-300">
+                {recentLogs.length > 0
+                  ? recentLogs.join(" • ")
+                  : "No interaction yet"}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================
+          PERFORMANCE ANALYTICS
+      ====================================================== */}
+
+      <section
+        className="max-w-[1400px] mx-auto mb-6
+        p-6 rounded-3xl
+        bg-gradient-to-r from-indigo-800 to-purple-800
+        text-white shadow-xl"
+      >
+        <div className="flex flex-col md:flex-row
+        justify-between gap-5">
+
+          <div>
+            <h2 className="text-xl font-black">
+              Performance & Post Analytics
+            </h2>
+
+            <p className="text-sm text-indigo-200 mt-1">
+              Total posts scheduled: {totalPosts}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+
+            <div className="bg-white/10 p-4 rounded-xl text-center">
+              <p className="text-xs">Rendering Strategy</p>
+
+              <p className="font-black text-emerald-300">
+                {optimized
+                  ? "Memoized"
+                  : "Standard"}
+              </p>
+            </div>
+
+            <div className="bg-white/10 p-4 rounded-xl text-center">
+              <p className="text-xs">Performance</p>
+
+              <p
+                className={`font-black
+                ${
+                  optimized
+                    ? "text-emerald-300"
+                    : "text-red-300"
+                }`}
+              >
+                {optimized
+                  ? "HIGH"
+                  : "BASELINE"}
+              </p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      {/* ======================================================
+          LAZY LOADED REPORT
+      ====================================================== */}
+
       {showAnalytics && (
-        <div className="relative w-full mx-auto mb-6">
+        <div className="max-w-[1400px] mx-auto mb-6">
           <Suspense
             fallback={
-              <div className="p-6 bg-white/80 backdrop-blur-md rounded-2xl border border-white text-center font-black text-indigo-600 animate-pulse shadow-lg">
-                ✨ Fetching interactive analytics module...
+              <div
+                className="p-8 bg-white rounded-2xl
+                text-center font-black text-indigo-600"
+              >
+                ✨ Loading premium interactive report...
               </div>
             }
           >
-            <AnalyticsReportWidget eventsCount={events.length} />
+            <PremiumReportWidget
+              processedData={filteredEvents}
+            />
           </Suspense>
         </div>
       )}
 
-      {/* Full-Width Main Calendar Grid */}
-      <main className="relative w-full flex-1 bg-white/60 backdrop-blur-3xl p-6 rounded-3xl border border-white/80 shadow-2xl shadow-indigo-200/50 flex flex-col justify-between">
-        {/* Multi-Colored Day Headers */}
-        <div className="grid grid-cols-7 gap-3 mb-4">
+      {/* ======================================================
+          CALENDAR
+      ====================================================== */}
+
+      <main
+        className="max-w-[1400px] mx-auto
+        bg-white/60 backdrop-blur-xl
+        p-6 rounded-3xl border border-white
+        shadow-2xl"
+      >
+
+        {/* DAYS */}
+
+        <div
+          className="grid grid-cols-7 gap-3 mb-4"
+        >
           {DAYS_OF_WEEK.map((day) => (
             <div
               key={day.name}
-              className={`text-center py-2.5 rounded-xl border border-white/60 text-xs sm:text-sm font-black tracking-wider uppercase shadow-md ${day.color}`}
+              className={`${day.color}
+              text-center py-3 rounded-xl
+              text-xs sm:text-sm font-black
+              uppercase shadow-md`}
             >
               {day.name}
             </div>
           ))}
         </div>
 
-        {/* Calendar Days Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 flex-1">
-          {calendarDays.map((day) => {
-            const dayEvents = filteredEvents.filter((e) => e.date === day.dateString);
+        {/* CALENDAR */}
+
+        <div
+          className="grid grid-cols-1
+          sm:grid-cols-2 md:grid-cols-4
+          lg:grid-cols-7 gap-3"
+        >
+          {CALENDAR_DAYS.map((day) => {
+            const dayEvents = optimized
+              ? eventsByDate[day.dateString] || []
+              : filteredEvents.filter(
+                  (event) =>
+                    event.date === day.dateString
+                );
+
+            if (optimized) {
+              return (
+                <OptimizedCalendarDay
+                  key={day.dateString}
+                  dayNumber={day.dayNumber}
+                  monthLabel={day.monthLabel}
+                  dateString={day.dateString}
+                  events={dayEvents}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onDragStart={handleDragStart}
+                />
+              );
+            }
+
             return (
-              <CalendarDay
+              <NonOptimizedCalendarDay
                 key={day.dateString}
                 dayNumber={day.dayNumber}
+                monthLabel={day.monthLabel}
                 dateString={day.dateString}
                 events={dayEvents}
-                onDragStart={handleDragStart}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
+                onDragStart={handleDragStart}
               />
             );
           })}
         </div>
+
+        {/* INSTRUCTIONS */}
+
+        <div
+          className="mt-6 p-4 rounded-2xl
+          bg-indigo-50 border border-indigo-100"
+        >
+          <p className="text-xs font-black text-indigo-700">
+            💡 PERFORMANCE DEMO
+          </p>
+
+          <p className="text-xs text-slate-600 mt-1">
+            Switch between Optimized and Non-Optimized
+            Mode, then click "Trigger Re-render".
+            Observe the render counters and compare
+            component behaviour.
+          </p>
+
+          <p className="text-xs text-slate-600 mt-1">
+            You can also drag an event from one calendar
+            day to another to demonstrate synchronized
+            React state.
+          </p>
+        </div>
+
       </main>
     </div>
   );
